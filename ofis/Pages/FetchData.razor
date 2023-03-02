@@ -1,0 +1,225 @@
+﻿@page "/fetchdata"
+@using ofis.Data
+@using System
+
+
+@inject WeatherForecastService ForecastService
+
+<h1>Mükellefler</h1>
+<p style="color:red">@Error</p>
+@if (forecasts == null)
+{
+    
+    <p><em>Yükleniyor...</em></p>
+}
+else
+{
+    <!-- Show the forecasts for the current user -->
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Ünvan</th>
+                <th>Bordro</th>
+                <th>Kdv</th>
+                <th>Muhtasar</th>
+                <th>Ödemeler</th>
+                <th>Geçici</th>
+                <th>Yıllık V.</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Id</td>
+                    <td>@forecast.Unvan</td>
+                    <td>@forecast.Kdv</td>
+                    <td><input type="checkbox" checked="@forecast.Kdv" /></td>
+                    
+                    @*        @onchange="(() => Guncelle(forecast))"        
+                    <td> <Switch IsToggled="@forecast.Kdv"/></td>
+                    <td> <Switch IsToggled="@forecast.Muhtasar"/> </td>
+                    <td> <Switch IsToggled="@forecast.Odemeler"/> </td>
+                    <td> <Switch IsToggled="@forecast.Gecici"/> </td>
+                    <td> <Switch IsToggled="@forecast.Yillik"/></td>*@
+                    <td>
+
+                        <!-- Edit the current forecast -->
+                        <!-- Edit the current forecast -->
+                       
+                            
+                            <button class="btn btn-primary"
+                        @onclick="(() => EditForecast(forecast))">
+                                Güncelle
+                            </button>
+                   
+                       
+                  
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p>
+        <!-- Add a new forecast -->
+        <button class="btn btn-success"
+            @onclick="AddNewForecast">
+            Yeni Mükellef Ekle
+        </button>
+    </p>
+
+    @if (ShowPopup)
+    {
+        <!-- This is the popup to create or edit a forecast -->
+        <div class="modal" tabindex="-1" style="display:block" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Edit Forecast</h3>
+                        <!-- Button to close the popup -->
+                        <button type="button" class="close"
+                        @onclick="ClosePopup">
+                            <span aria-hidden="true">X</span>
+                        </button>
+                    </div>
+                    <!-- Edit form for the current forecast -->
+                    <div class="modal-body">
+                       <input class="form-control" type="text"
+                       placeholder="Mükellef Ünvanı Giriniz"
+                       @bind="objWeatherForecast.Unvan"/>
+                        <br />
+                        <input type="checkbox"
+                       
+                       @bind="objWeatherForecast.Kdv" />
+                         <br />
+                        <!-- Button to save the forecast -->
+                        <button class="btn btn-success"
+                        @onclick="SaveForecast">
+                            Kaydet
+                        </button>&nbsp;
+                        <!-- Only show delete button if not a new record -->
+                        @if (objWeatherForecast.Id > 0)
+                        {
+                            <!-- Button to delete the forecast -->
+                            <button class="btn btn-danger"
+                        @onclick="DeleteForecast">
+                                Sil
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+@code
+{
+    string Error = "";
+    List<WeatherForecast> forecasts = new List<WeatherForecast>();
+    WeatherForecast objWeatherForecast = new WeatherForecast();
+    bool ShowPopup = false;
+    protected override async Task OnInitializedAsync()
+    {
+        // Get the forecasts
+        forecasts = await ForecastService.GetForecastAsync();
+    }
+
+    void AddNewForecast()
+    {
+        // Make new forecast
+        objWeatherForecast = new WeatherForecast();
+        // Set Id to 0 so we know it is a new record
+        objWeatherForecast.Id = 0;
+        // Open the Popup
+        ShowPopup = true;
+    }
+    void EditForecast(WeatherForecast weatherForecast)
+    {
+        // Set the selected forecast
+        // as the current forecast
+        objWeatherForecast = weatherForecast;
+        // Open the Popup
+        //ShowPopup = false;
+        Task.Run(Guncelle);
+        //ShowPopup = true;
+    }
+
+
+   
+
+    void ClosePopup()
+    {
+        // Close the Popup
+        ShowPopup = false;
+    }
+
+    async Task SaveForecast()
+    {
+        // Close the Popup
+        ShowPopup = false;
+        Error = "";
+        try
+        {
+            // A new forecast will have the Id set to 0
+            if (objWeatherForecast.Id == 0)
+            {
+                // Create new forecast
+                WeatherForecast objNewWeatherForecast = new WeatherForecast();
+                objNewWeatherForecast.Unvan = objWeatherForecast.Unvan;
+                objNewWeatherForecast.Kdv = objWeatherForecast.Kdv;
+             
+                // Save the result
+                var NewWeatherForecast =
+                await ForecastService.CreateForecastAsync(objNewWeatherForecast);
+                // Add the Forcast
+                forecasts.Add(NewWeatherForecast);
+            }
+            else
+            {
+                // This is an update
+                await ForecastService.UpdateForecastAsync(objWeatherForecast);
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+    async Task DeleteForecast()
+    {
+        // Close the Popup
+        ShowPopup = false;
+        try
+        {
+            Error = "";
+            // Delete the forecast
+            await ForecastService.DeleteForecastAsync(objWeatherForecast);
+            // Remove the Forcast
+            forecasts.Remove(objWeatherForecast);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    async Task Guncelle()
+    {
+
+        try
+        {
+          
+                // This is an update
+                await ForecastService.UpdateForecastAsync(objWeatherForecast);
+           
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+       
+
+    }
+
+}
